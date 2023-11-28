@@ -4,11 +4,14 @@ from PyQt5.QtGui import QIcon
 from PyQt5.QtCore import pyqtSlot
 from PyQt5.QtGui import QPixmap
 
-from aiplayer import AIPlayer
-from player import RandomPlayer, HumanPlayer
-from game import Game, GameStatus
-from player import Player
+from connect4lib.aiplayer import AIPlayer
+from connect4lib.player import RandomPlayer, HumanPlayer
+from connect4lib.game import Game, GameStatus
+from connect4lib.player import Player
 import numpy as np
+from keras.models import load_model
+
+
 import time
 
 import functools
@@ -35,11 +38,11 @@ def window(game: Game):
     ncols = 7
     
     
-    empty_pixmap = QPixmap('empty.png')
+    empty_pixmap = QPixmap('assets/empty.png')
     empty_pixmap = empty_pixmap.scaledToWidth(100)
-    red_pixmap = QPixmap('empty.png')
+    red_pixmap = QPixmap('assets/empty.png')
     red_pixmap = red_pixmap.scaledToWidth(100)
-    blue_pixmap = QPixmap('empty.png')
+    blue_pixmap = QPixmap('assets/empty.png')
     blue_pixmap = blue_pixmap.scaledToWidth(100)
     
     label_grid = []
@@ -59,11 +62,11 @@ def window(game: Game):
         for i in range(nrows):
             for j in range(ncols):
                 if game.board[0,i,j] == 1:
-                    pixmap = QPixmap('red.png')
+                    pixmap = QPixmap('assets/red.png')
                 elif game.board[1,i,j] == 1:
-                    pixmap = QPixmap('blue.png')
+                    pixmap = QPixmap('assets/blue.png')
                 else:
-                    pixmap = QPixmap('empty.png')
+                    pixmap = QPixmap('assets/empty.png')
                 pixmap = pixmap.scaledToWidth(100)
                 label_grid[i][j].setPixmap(pixmap)
     
@@ -107,15 +110,13 @@ def window(game: Game):
     win.setGeometry(50,50,200,200)
     win.show()
     
-    #game.play_game(show_board_each_move=True)
-    
     sys.exit(app.exec_())
 
 def main():
     g = Game()
     human = HumanGUIPlayer(name="Human")
     magnus = AIPlayer(name="Magnus")
-    magnus.model.load_weights('magnus-weights-3.ckpt')
+    magnus.model = load_model('magnus-4.h5')
     g.players = [human,magnus]
     g.verbose = True
 

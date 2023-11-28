@@ -1,6 +1,6 @@
 import numpy as np
-from utils import Connect4Exception
-from move_record import MoveRecord
+from connect4lib.utils import Connect4Exception
+from connect4lib.move_record import MoveRecord
 from enum import Enum
 
 class GameStatus(Enum):
