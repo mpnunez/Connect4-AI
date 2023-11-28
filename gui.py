@@ -1,5 +1,5 @@
 import sys
-from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QGridLayout, QPushButton
+from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QGridLayout, QPushButton, QComboBox
 from PyQt5.QtGui import QIcon
 from PyQt5.QtCore import pyqtSlot
 from PyQt5.QtGui import QPixmap
@@ -86,6 +86,9 @@ def window(game: Game):
             game.finish_game()
             return
         #time.sleep(1)
+        # maybe use QtCore.QTimer.singleShot() to update
+        # GUI, pause, then let the computer move
+
         game.next_player_make_move()
         update_board()
         if game.status == GameStatus.COMPLETE:
@@ -108,6 +111,11 @@ def window(game: Game):
     start_button.clicked.connect(on_click)
     grid.addWidget(start_button,nrows+1,0)
     game.start_game()
+
+    player_selectors = [QComboBox(), QComboBox()]
+    for ind, ps in enumerate(player_selectors):
+        ps.addItems(['Human', 'Random', 'Column Spammer', 'Load model'])
+        grid.addWidget(ps,nrows+1,ind+1)
     			
     win.setLayout(grid)
     win.setWindowTitle("PyQt Grid Example")
