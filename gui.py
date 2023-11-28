@@ -3,6 +3,7 @@ from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QGridLayout, QPushBut
 from PyQt5.QtGui import QIcon
 from PyQt5.QtCore import pyqtSlot
 from PyQt5.QtGui import QPixmap
+from PyQt5.QtWidgets import QMessageBox
 
 from connect4lib.aiplayer import AIPlayer
 from connect4lib.player import RandomPlayer, HumanPlayer
@@ -37,48 +38,50 @@ def window(game: Game):
     nrows = 6
     ncols = 7
     
-    
-    empty_pixmap = QPixmap('assets/empty.png')
-    empty_pixmap = empty_pixmap.scaledToWidth(100)
-    red_pixmap = QPixmap('assets/empty.png')
-    red_pixmap = red_pixmap.scaledToWidth(100)
-    blue_pixmap = QPixmap('assets/empty.png')
-    blue_pixmap = blue_pixmap.scaledToWidth(100)
+    pix_maps = {}
+    for color in ("empty","red","blue"):
+        pix_maps[color] = QPixmap(f'assets/{color}.png')
+        pix_maps[color] = pix_maps[color].scaledToWidth(100)
     
     label_grid = []
-    
     for i in range(nrows):
         label_row = []
         for j in range(ncols):
-           
+        
             label = QLabel()
-            label.setPixmap(empty_pixmap)
+            label.setPixmap(pix_maps["empty"])
             grid.addWidget(label,i,j)
             label_row.append(label)
-           
+        
         label_grid.append(label_row)
-    
+
+
     def update_board():
         for i in range(nrows):
             for j in range(ncols):
                 if game.board[0,i,j] == 1:
-                    pixmap = QPixmap('assets/red.png')
+                    pixmap = pix_maps["red"]
                 elif game.board[1,i,j] == 1:
-                    pixmap = QPixmap('assets/blue.png')
+                    pixmap = pix_maps["blue"]
                 else:
-                    pixmap = QPixmap('assets/empty.png')
+                    pixmap = pix_maps["empty"]
                 pixmap = pixmap.scaledToWidth(100)
                 label_grid[i][j].setPixmap(pixmap)
+
+    msg = QMessageBox()
+    msg.setWindowTitle("Connect4")
     
+
     @pyqtSlot()
     def change_picture(j):
         if game.status == GameStatus.COMPLETE:
-            print("Game is done!")
+            msg.setText("Game is complete!")
+            msg.exec_()
             return
         game.players[0].next_move = j
         
         game.next_player_make_move()
-        update_board()    # Does not update in GUI event loop until this function is complete
+        update_board()
         if game.status == GameStatus.COMPLETE:
             game.finish_game()
             return
@@ -99,11 +102,12 @@ def window(game: Game):
     @pyqtSlot()
     def on_click():
         game.start_game()
+        update_board()
 
-    start_button = QPushButton("Start Game")
+    start_button = QPushButton("New Game")
     start_button.clicked.connect(on_click)
     grid.addWidget(start_button,nrows+1,0)
-        
+    game.start_game()
     			
     win.setLayout(grid)
     win.setWindowTitle("PyQt Grid Example")
@@ -116,7 +120,7 @@ def main():
     g = Game()
     human = HumanGUIPlayer(name="Human")
     magnus = AIPlayer(name="Magnus")
-    magnus.model = load_model('magnus-4.h5')
+    magnus.model = load_model('magnus-9.h5')
     g.players = [human,magnus]
     g.verbose = True
 

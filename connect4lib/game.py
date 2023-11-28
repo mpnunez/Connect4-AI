@@ -141,6 +141,7 @@ class Game:
     def start_game(self):
         if len(self.players) != self.nplayers:
             raise Connect4Exception(f"Need {self.nplayers} players")
+        self.board = np.zeros([self.nplayers,self.nrows,self.ncols])
         self.status = GameStatus.INPROGRESS
     
     def next_player_make_move(self):
