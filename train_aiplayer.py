@@ -52,11 +52,11 @@ def main():
     random_bot = RandomPlayer("Random Bot")
     opponents = [random_bot, ColumnSpammer(name="ColumnSpammer",randomness_weight=0.2)]
     
-    n_training_rounds = 10
+    n_training_rounds = 3
     for training_round in range(n_training_rounds):
     
         trainee = random_bot if training_round == 0 else magnus    # Use random bot in 1st round to save time 
-        all_move_records, win_loss_ties = play_matches(trainee, opponents, n_games=500)
+        all_move_records, win_loss_ties = play_matches(trainee, opponents, n_games=10)
 
         # Print table of win/loss/tie/records
         print("Opponent\tWins\tLosses\tTies")
