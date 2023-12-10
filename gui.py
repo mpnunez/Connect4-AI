@@ -18,8 +18,16 @@ import time
 import functools
 import pickle
 
+"""
+
+When the game starts or the user presses a button,
+loop through next players until the game ends or until you 
+reach a human player
+
+"""
+
 class HumanGUIPlayer(Player):
-    
+    requires_user_input = True
     def __init__(self,name=None,gui=None):
         super().__init__(name)
         self.next_move = 0
@@ -34,9 +42,10 @@ def window(game: Game):
     app = QApplication(sys.argv)
     win = QWidget()
     grid = QGridLayout()
-    	
-    nrows = 6
-    ncols = 7
+    
+    _, nrows, ncols = game.board.shape
+    
+    
     
     pix_maps = {}
     for color in ("empty","red","blue"):
@@ -72,51 +81,69 @@ def window(game: Game):
     msg.setWindowTitle("Connect4")
     
 
-    @pyqtSlot()
-    def change_picture(j):
+    def check_game_completion() -> bool:
         if game.status == GameStatus.COMPLETE:
+            game.finish_game()
             msg.setText("Game is complete!")
             msg.exec_()
-            return
-        game.players[0].next_move = j
-        
-        game.next_player_make_move()
-        update_board()
-        if game.status == GameStatus.COMPLETE:
-            game.finish_game()
-            return
-        #time.sleep(1)
-        # maybe use QtCore.QTimer.singleShot() to update
-        # GUI, pause, then let the computer move
+            
+        return game.status == GameStatus.COMPLETE
 
+    @pyqtSlot()
+    def move_until_next_human_player():
+        while game.status == GameStatus.INPROGRESS and not game.players[game.current_player].requires_user_input:
+            time.sleep(1)
+            game.next_player_make_move()
+            update_board()
+            if check_game_completion():
+                return
+
+    @pyqtSlot()
+    def make_human_move(j):
+        if game.status == GameStatus.NOTSTARTED:
+            msg.setText("Press 'New Game' to start game")
+            msg.exec_()
+            return
+        if check_game_completion():
+            return
+        
+        if not game.players[game.current_player].requires_user_input:
+            return
+        
+        game.players[game.current_player].next_move = j
         game.next_player_make_move()
         update_board()
-        if game.status == GameStatus.COMPLETE:
-            game.finish_game()
+        
+        if check_game_completion():
             return
         
            
     for j in range(ncols):
         drop_button = QPushButton("Drop")
         grid.addWidget(drop_button,nrows,j)
-        drop_button.clicked.connect(functools.partial(change_picture, j))
+        drop_button.clicked.connect(functools.partial(make_human_move, j))
+        drop_button.clicked.connect(move_until_next_human_player)
         
     # Start game button
     @pyqtSlot()
-    def on_click():
+    def start_new_game():
         game.start_game()
+        move_until_next_human_player()
         update_board()
 
     start_button = QPushButton("New Game")
-    start_button.clicked.connect(on_click)
+    start_button.clicked.connect(start_new_game)
     grid.addWidget(start_button,nrows+1,0)
-    game.start_game()
+    #game.start_game()
+    move_until_next_human_player()
 
     player_selectors = [QComboBox(), QComboBox()]
     for ind, ps in enumerate(player_selectors):
         ps.addItems(['Human', 'Random', 'Column Spammer', 'Load model'])
         grid.addWidget(ps,nrows+1,ind+1)
     			
+    
+        
     win.setLayout(grid)
     win.setWindowTitle("PyQt Grid Example")
     win.setGeometry(50,50,200,200)
@@ -124,11 +151,13 @@ def window(game: Game):
     
     sys.exit(app.exec_())
 
+
+
 def main():
     g = Game()
     human = HumanGUIPlayer(name="Human")
     magnus = AIPlayer(name="Magnus")
-    magnus.model = load_model('magnus-9.h5')
+    magnus.model = load_model('magnus-2.h5')
     g.players = [human,magnus]
     g.verbose = True
 

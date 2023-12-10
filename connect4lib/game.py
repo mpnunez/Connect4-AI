@@ -20,7 +20,7 @@ class Game:
         self.status = GameStatus.NOTSTARTED
         self.game_data = []
         self.winner = -1
-        self.move_ind = -1
+        self.move_ind = 0
         self.verbose = False
 
     def check_horizontal_win(self,player: int) -> bool:
@@ -147,8 +147,7 @@ class Game:
     def next_player_make_move(self):
         if self.verbose:
             self.show_board()
-        self.move_ind += 1
-        self.current_player = self.move_ind % len(self.players)
+        
         player = self.players[self.current_player]
         
         legal_moves, illegal_moves = self.get_valid_invalid_moves()
@@ -169,6 +168,9 @@ class Game:
         self.game_data.append(move_record)
         self.drop_in_slot(self.current_player,player_move)
         self.check_win(self.current_player)
+        if self.status == GameStatus.INPROGRESS:
+            self.move_ind += 1
+            self.current_player = self.move_ind % len(self.players)
     
     def play_game(self):
         
