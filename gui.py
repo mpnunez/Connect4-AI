@@ -16,7 +16,6 @@ from keras.models import load_model
 import time
 
 import functools
-import pickle
 
 """
 
@@ -38,132 +37,133 @@ class HumanGUIPlayer(Player):
         move_scores[self.next_move] = 1
         return move_scores
 
-def window(game: Game):
-    app = QApplication(sys.argv)
-    win = QWidget()
-    grid = QGridLayout()
-    
-    _, nrows, ncols = game.board.shape
-    
-    
-    
-    pix_maps = {}
-    for color in ("empty","red","blue"):
-        pix_maps[color] = QPixmap(f'assets/{color}.png')
-        pix_maps[color] = pix_maps[color].scaledToWidth(100)
-    
-    label_grid = []
-    for i in range(nrows):
-        label_row = []
-        for j in range(ncols):
-        
-            label = QLabel()
-            label.setPixmap(pix_maps["empty"])
-            grid.addWidget(label,i,j)
-            label_row.append(label)
-        
-        label_grid.append(label_row)
+class Connect4GUI(QWidget):
+    def __init__(self,parent=None):
+        #super().__init__(self,parent=None)
+        QWidget.__init__(self, parent)
+        self.game = Game()
+        human = HumanGUIPlayer(name="Human")
+        magnus = AIPlayer(name="Magnus")
+        magnus.model = load_model('magnus-2.h5')
+        self.game.players = [human,magnus]
+        self.game.verbose = True
 
 
-    def update_board():
+        
+        
+        _, nrows, ncols = self.game.board.shape
+        self.nrows = nrows
+        self.ncols = ncols
+        self.grid = QGridLayout()
+        
+        
+        
+        self.pix_maps = {}
+        for color in ("empty","red","blue"):
+            self.pix_maps[color] = QPixmap(f'assets/{color}.png')
+            self.pix_maps[color] = self.pix_maps[color].scaledToWidth(100)
+        
+        self.label_grid = []
         for i in range(nrows):
+            label_row = []
             for j in range(ncols):
-                if game.board[0,i,j] == 1:
-                    pixmap = pix_maps["red"]
-                elif game.board[1,i,j] == 1:
-                    pixmap = pix_maps["blue"]
-                else:
-                    pixmap = pix_maps["empty"]
-                pixmap = pixmap.scaledToWidth(100)
-                label_grid[i][j].setPixmap(pixmap)
-
-    msg = QMessageBox()
-    msg.setWindowTitle("Connect4")
-    
-
-    def check_game_completion() -> bool:
-        if game.status == GameStatus.COMPLETE:
-            game.finish_game()
-            msg.setText("Game is complete!")
-            msg.exec_()
             
-        return game.status == GameStatus.COMPLETE
+                label = QLabel()
+                label.setPixmap(self.pix_maps["empty"])
+                self.grid.addWidget(label,i,j)
+                label_row.append(label)
+            
+            self.label_grid.append(label_row)
+    
+    
+        
+    
+        self.msg = QMessageBox()
+        self.msg.setWindowTitle("Connect4")
+        
+    
+        
+            
+        # Add drop buttons
+        for j in range(ncols):
+            drop_button = QPushButton("Drop")
+            self.grid.addWidget(drop_button,nrows,j)
+            drop_button.clicked.connect(functools.partial(self.make_human_move, j))
+            drop_button.clicked.connect(self.move_until_next_human_player)
+            
+        
+        # Add New Game button
+        start_button = QPushButton("New Game")
+        start_button.clicked.connect(self.start_new_game)
+        self.grid.addWidget(start_button,nrows+1,0)
+    
+        # Add player selectors
+        player_selectors = [QComboBox(), QComboBox()]
+        for ind, ps in enumerate(player_selectors):
+            ps.addItems(['Human', 'Random', 'Column Spammer', 'Load model'])
+            self.grid.addWidget(ps,nrows+1,ind+1)
+        			
+        
+        # Initialize layout
+        self.setLayout(self.grid)
+        self.setWindowTitle("PyQt Grid Example")
+        self.setGeometry(50,50,200,200)
+    
+    def update_board(self):
+        for i in range(self.nrows):
+            for j in range(self.ncols):
+                if self.game.board[0,i,j] == 1:
+                    pixmap = self.pix_maps["red"]
+                elif self.game.board[1,i,j] == 1:
+                    pixmap = self.pix_maps["blue"]
+                else:
+                    pixmap = self.pix_maps["empty"]
+                pixmap = pixmap.scaledToWidth(100)
+                self.label_grid[i][j].setPixmap(pixmap)
+                
 
-    @pyqtSlot()
-    def move_until_next_human_player():
-        while game.status == GameStatus.INPROGRESS and not game.players[game.current_player].requires_user_input:
+    def start_new_game(self):
+        self.game.start_game()
+        self.move_until_next_human_player()
+        self.update_board()
+        
+    def check_game_completion(self) -> bool:
+        if self.game.status == GameStatus.COMPLETE:
+            self.game.finish_game()
+            self.msg.setText("Game is complete!")
+            self.msg.exec_()
+            
+        return self.game.status == GameStatus.COMPLETE
+
+    def move_until_next_human_player(self):
+        while self.game.status == GameStatus.INPROGRESS and not self.game.players[self.game.current_player].requires_user_input:
             time.sleep(1)
-            game.next_player_make_move()
-            update_board()
-            if check_game_completion():
+            self.game.next_player_make_move()
+            self.update_board()
+            if self.check_game_completion():
                 return
 
-    @pyqtSlot()
-    def make_human_move(j):
-        if game.status == GameStatus.NOTSTARTED:
-            msg.setText("Press 'New Game' to start game")
-            msg.exec_()
+    def make_human_move(self,j):
+        if self.game.status == GameStatus.NOTSTARTED:
+            self.msg.setText("Press 'New Game' to start game")
+            self.msg.exec_()
             return
-        if check_game_completion():
-            return
-        
-        if not game.players[game.current_player].requires_user_input:
+        if self.check_game_completion():
             return
         
-        game.players[game.current_player].next_move = j
-        game.next_player_make_move()
-        update_board()
-        
-        if check_game_completion():
+        if not self.game.players[self.game.current_player].requires_user_input:
             return
         
-           
-    for j in range(ncols):
-        drop_button = QPushButton("Drop")
-        grid.addWidget(drop_button,nrows,j)
-        drop_button.clicked.connect(functools.partial(make_human_move, j))
-        drop_button.clicked.connect(move_until_next_human_player)
+        self.game.players[self.game.current_player].next_move = j
+        self.game.next_player_make_move()
+        self.update_board()
         
-    # Start game button
-    @pyqtSlot()
-    def start_new_game():
-        game.start_game()
-        move_until_next_human_player()
-        update_board()
-
-    start_button = QPushButton("New Game")
-    start_button.clicked.connect(start_new_game)
-    grid.addWidget(start_button,nrows+1,0)
-    #game.start_game()
-    move_until_next_human_player()
-
-    player_selectors = [QComboBox(), QComboBox()]
-    for ind, ps in enumerate(player_selectors):
-        ps.addItems(['Human', 'Random', 'Column Spammer', 'Load model'])
-        grid.addWidget(ps,nrows+1,ind+1)
-    			
+        if self.check_game_completion():
+            return
     
-        
-    win.setLayout(grid)
-    win.setWindowTitle("PyQt Grid Example")
-    win.setGeometry(50,50,200,200)
-    win.show()
-    
+   
+if __name__ == "__main__":
+    app = QApplication(sys.argv)
+    window = Connect4GUI()
+    window.show()
     sys.exit(app.exec_())
-
-
-
-def main():
-    g = Game()
-    human = HumanGUIPlayer(name="Human")
-    magnus = AIPlayer(name="Magnus")
-    magnus.model = load_model('magnus-2.h5')
-    g.players = [human,magnus]
-    g.verbose = True
-
-    window(g)
-    
-    
-
-if __name__ == '__main__':
-   main()
