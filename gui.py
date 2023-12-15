@@ -43,7 +43,7 @@ class Connect4GUI(QWidget):
     def __init__(self,parent=None):
         QWidget.__init__(self, parent)
         
-        self.thread = Worker()
+        #self.thread = Worker()
         
         
         self.game = Game()
@@ -127,6 +127,10 @@ class Connect4GUI(QWidget):
                 self.label_grid[i][j].setPixmap(pixmap)
                 
 
+    def reportProgress(self,newboard):
+        self.game.board = newboard
+        self.update_board()
+
     def start_new_game(self):
         self.game.start_game()
         self.move_until_next_human_player()
@@ -162,17 +166,12 @@ class Connect4GUI(QWidget):
         
 
     def move_until_next_human_player(self):
-        while self.game.status == GameStatus.INPROGRESS and not self.game.players[self.game.current_player].requires_user_input:
-            time.sleep(1)
-            self.game.next_player_make_move()
-            self.update_board()
-            if self.check_game_completion():
-                return
+        
             
         # Step 2: Create a QThread object
         self.thread = QThread()
         # Step 3: Create a worker object
-        self.worker = Worker()
+        self.worker = Worker(self)
         # Step 4: Move worker to the thread
         self.worker.moveToThread(self.thread)
         # Step 5: Connect signals and slots
@@ -180,17 +179,28 @@ class Connect4GUI(QWidget):
         self.worker.finished.connect(self.thread.quit)
         self.worker.finished.connect(self.worker.deleteLater)
         self.thread.finished.connect(self.thread.deleteLater)
+        self.worker.progress.connect(self.reportProgress)
         # Step 6: Start the thread
         self.thread.start()
 
 
 class Worker(QObject):
     finished = pyqtSignal()
-    progress = pyqtSignal(int)
+    progress = pyqtSignal(np.array)
+
+    def __init__(self,gui):
+        super().__init__()
+        self.gui = gui
 
     def run(self):
         """Long-running task."""
-        time.sleep(1)
+        while self.gui.game.status == GameStatus.INPROGRESS and not self.gui.game.players[self.game.current_player].requires_user_input:
+            time.sleep(1)
+            self.gui.game.next_player_make_move()
+            self.progress.emit(gui.game.board)
+            if self.gui.check_game_completion():
+                return
+
         self.finished.emit()
    
 if __name__ == "__main__":
