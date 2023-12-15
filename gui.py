@@ -1,7 +1,7 @@
 import sys
 from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QGridLayout, QPushButton, QComboBox
 from PyQt5.QtGui import QIcon
-from PyQt5.QtCore import pyqtSlot
+from PyQt5.QtCore import pyqtSlot, QThread
 from PyQt5.QtGui import QPixmap
 from PyQt5.QtWidgets import QMessageBox
 
@@ -39,8 +39,11 @@ class HumanGUIPlayer(Player):
 
 class Connect4GUI(QWidget):
     def __init__(self,parent=None):
-        #super().__init__(self,parent=None)
         QWidget.__init__(self, parent)
+        
+        self.thread = Worker()
+        
+        
         self.game = Game()
         human = HumanGUIPlayer(name="Human")
         magnus = AIPlayer(name="Magnus")
@@ -135,13 +138,7 @@ class Connect4GUI(QWidget):
             
         return self.game.status == GameStatus.COMPLETE
 
-    def move_until_next_human_player(self):
-        while self.game.status == GameStatus.INPROGRESS and not self.game.players[self.game.current_player].requires_user_input:
-            time.sleep(1)
-            self.game.next_player_make_move()
-            self.update_board()
-            if self.check_game_completion():
-                return
+    
 
     def make_human_move(self,j):
         if self.game.status == GameStatus.NOTSTARTED:
@@ -160,7 +157,49 @@ class Connect4GUI(QWidget):
         
         if self.check_game_completion():
             return
-    
+        
+
+    def move_until_next_human_player(self):
+        while self.game.status == GameStatus.INPROGRESS and not self.game.players[self.game.current_player].requires_user_input:
+            time.sleep(1)
+            self.game.next_player_make_move()
+            self.update_board()
+            if self.check_game_completion():
+                return
+            
+        # Step 2: Create a QThread object
+        self.thread = QThread()
+        # Step 3: Create a worker object
+        self.worker = Worker()
+        # Step 4: Move worker to the thread
+        self.worker.moveToThread(self.thread)
+        # Step 5: Connect signals and slots
+        self.thread.started.connect(self.worker.run)
+        self.worker.finished.connect(self.thread.quit)
+        self.worker.finished.connect(self.worker.deleteLater)
+        self.thread.finished.connect(self.thread.deleteLater)
+        self.worker.progress.connect(self.reportProgress)
+        # Step 6: Start the thread
+        self.thread.start()
+
+        # Final resets
+        self.longRunningBtn.setEnabled(False)
+        self.thread.finished.connect(
+            lambda: self.longRunningBtn.setEnabled(True)
+        )
+        self.thread.finished.connect(
+            lambda: self.stepLabel.setText("Long-Running Step: 0")
+        )
+
+class Worker(QObject):
+    finished = pyqtSignal()
+    progress = pyqtSignal(int)
+
+    def run(self):
+        """Long-running task."""
+        sleep(1)
+        self.progress.emit(i + 1)
+        self.finished.emit()
    
 if __name__ == "__main__":
     app = QApplication(sys.argv)

@@ -4,7 +4,6 @@ from connect4lib.game import Game
 from connect4lib.player import RandomPlayer, ColumnSpammer
 from connect4lib.aiplayer import AIPlayer
 from tqdm import tqdm
-import pickle
 import numpy as np
 from keras.models import load_model
 
