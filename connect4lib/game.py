@@ -171,6 +171,8 @@ class Game:
         if self.status == GameStatus.INPROGRESS:
             self.move_ind += 1
             self.current_player = self.move_ind % len(self.players)
+
+        return player_move
     
     def play_game(self):
         

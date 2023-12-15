@@ -127,9 +127,13 @@ class Connect4GUI(QWidget):
                 self.label_grid[i][j].setPixmap(pixmap)
                 
 
-    def reportProgress(self,newboard):
-        self.game.board = newboard
+    def reportProgress(self,move_ind):
+        self.game.drop_in_slot(self.game.current_player,move_ind)
         self.update_board()
+        self.game.check_win(self.game.current_player)
+        if self.game.status == GameStatus.INPROGRESS:
+            self.game.move_ind += 1
+            self.game.current_player = self.game.move_ind % len(self.game.players)
 
     def start_new_game(self):
         self.game.start_game()
@@ -186,7 +190,7 @@ class Connect4GUI(QWidget):
 
 class Worker(QObject):
     finished = pyqtSignal()
-    progress = pyqtSignal(np.array)
+    progress = pyqtSignal(int)
 
     def __init__(self,gui):
         super().__init__()
@@ -194,10 +198,10 @@ class Worker(QObject):
 
     def run(self):
         """Long-running task."""
-        while self.gui.game.status == GameStatus.INPROGRESS and not self.gui.game.players[self.game.current_player].requires_user_input:
+        while self.gui.game.status == GameStatus.INPROGRESS and not self.gui.game.players[self.gui.game.current_player].requires_user_input:
             time.sleep(1)
-            self.gui.game.next_player_make_move()
-            self.progress.emit(gui.game.board)
+            move_ind = self.gui.game.next_player_make_move()
+            self.progress.emit(move_ind)
             if self.gui.check_game_completion():
                 return
 
