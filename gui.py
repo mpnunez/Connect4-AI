@@ -1,7 +1,9 @@
 import sys
+import time
+
 from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QGridLayout, QPushButton, QComboBox
 from PyQt5.QtGui import QIcon
-from PyQt5.QtCore import pyqtSlot, QThread
+from PyQt5.QtCore import pyqtSlot, QThread, QObject, pyqtSignal
 from PyQt5.QtGui import QPixmap
 from PyQt5.QtWidgets import QMessageBox
 
@@ -178,18 +180,9 @@ class Connect4GUI(QWidget):
         self.worker.finished.connect(self.thread.quit)
         self.worker.finished.connect(self.worker.deleteLater)
         self.thread.finished.connect(self.thread.deleteLater)
-        self.worker.progress.connect(self.reportProgress)
         # Step 6: Start the thread
         self.thread.start()
 
-        # Final resets
-        self.longRunningBtn.setEnabled(False)
-        self.thread.finished.connect(
-            lambda: self.longRunningBtn.setEnabled(True)
-        )
-        self.thread.finished.connect(
-            lambda: self.stepLabel.setText("Long-Running Step: 0")
-        )
 
 class Worker(QObject):
     finished = pyqtSignal()
@@ -197,8 +190,7 @@ class Worker(QObject):
 
     def run(self):
         """Long-running task."""
-        sleep(1)
-        self.progress.emit(i + 1)
+        time.sleep(1)
         self.finished.emit()
    
 if __name__ == "__main__":
