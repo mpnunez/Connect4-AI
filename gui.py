@@ -51,7 +51,7 @@ class Connect4GUI(QWidget):
         magnus = AIPlayer(name="Magnus")
         magnus.model = load_model('magnus-2.h5')
         self.game.players = [human,magnus]
-        self.game.verbose = True
+        #self.game.verbose = True
 
 
         
@@ -128,12 +128,8 @@ class Connect4GUI(QWidget):
                 
 
     def reportProgress(self,move_ind):
-        self.game.drop_in_slot(self.game.current_player,move_ind)
+        self.game.move_next_player_with(move_ind)
         self.update_board()
-        self.game.check_win(self.game.current_player)
-        if self.game.status == GameStatus.INPROGRESS:
-            self.game.move_ind += 1
-            self.game.current_player = self.game.move_ind % len(self.game.players)
 
     def start_new_game(self):
         self.game.start_game()
@@ -164,9 +160,7 @@ class Connect4GUI(QWidget):
         self.game.players[self.game.current_player].next_move = j
         self.game.next_player_make_move()
         self.update_board()
-        
-        if self.check_game_completion():
-            return
+        self.check_game_completion()
         
 
     def move_until_next_human_player(self):
@@ -198,12 +192,11 @@ class Worker(QObject):
 
     def run(self):
         """Long-running task."""
-        while self.gui.game.status == GameStatus.INPROGRESS and not self.gui.game.players[self.gui.game.current_player].requires_user_input:
+        if self.gui.game.status == GameStatus.INPROGRESS and not self.gui.game.players[self.gui.game.current_player].requires_user_input:
             time.sleep(1)
-            move_ind = self.gui.game.next_player_make_move()
+            move_ind = self.gui.game.get_next_player_move()
             self.progress.emit(move_ind)
-            if self.gui.check_game_completion():
-                return
+
 
         self.finished.emit()
    
